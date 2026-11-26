@@ -3,10 +3,7 @@ const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { mapSearchResponse, mapMovieDetails } = require('./tmdb.mapper');
 
-/**
- * All communication with TMDB lives here. Credentials are read from the
- * server environment and are never returned to, or logged for, the client.
- */
+
 
 const buildUrl = (pathname, params = {}) => {
   const url = new URL(`${env.tmdb.baseUrl}${pathname}`);
@@ -45,23 +42,14 @@ const request = async (pathname, params) => {
     throw new AppError('Movie service is not configured.', 503);
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), env.tmdb.timeoutMs);
-
   let response;
   try {
     response = await fetch(buildUrl(pathname, params), {
       headers: buildHeaders(),
-      signal: controller.signal,
     });
   } catch (err) {
-    if (err.name === 'AbortError') {
-      throw new AppError('Movie service took too long to respond. Please try again.', 504);
-    }
     logger.error(`TMDB network error for ${pathname}: ${err.message}`);
     throw new AppError('Could not reach the movie service. Please try again later.', 502);
-  } finally {
-    clearTimeout(timer);
   }
 
   if (!response.ok) throw toAppError(response.status, pathname);
